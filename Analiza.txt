@@ -1,0 +1,30 @@
+Analiza:
+Perdoruesi mund te shfletoj modelet e veturave me qmimet e tyre,baze nevojes te rezervoj veturen per datat e caktuar.
+Te kryen pagesat online dhe te verifikon patentin.
+
+Biznesi mund te regjistroj vetura te ri.
+Mund te ndryshoj cmimet e veturave.
+Te ofroj cmime dinamike baze periudhes se regjistrimit.
+Te ofroj zbritje periodike ,po ashtu te ofroj qmime te personalizuar baze klientit.
+Te shtoj,ndryshoj,dhe te fshin rezervime.
+Me ane te platformes te pranoj depozita ose tere pagesen online.
+Te pranoj patentshoferin online dhe te pranon kushtet e perdorimit.
+
+
+
+
+Kerkesat:
+
+Per Biznesin:
+Mund te ruan veturen(VIN,Targat,Brendi,Modeli,Viti Prodhimit)
+Mund te caktoj cmimet per secilin veture dhe perqindjen e zbritjes baze periudhes
+Te ruhen userat dhe te dhenat e tyre.
+Te ruhet historia e rezervimeve te userave duke perfire(vetura,periudha,statusi,depozita,depozita kthyer,pagesa)
+
+
+
+Per Userat:
+Mund te hap account
+Mund te verifikoj patentin
+Mund te shfletoj modelet e veturave me cmimet e tyre
+j
