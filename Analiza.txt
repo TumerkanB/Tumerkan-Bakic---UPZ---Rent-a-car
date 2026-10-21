@@ -27,4 +27,14 @@ Per Userat:
 Mund te hap account
 Mund te verifikoj patentin
 Mund te shfletoj modelet e veturave me cmimet e tyre
-j
+Mund te shfletoj veturat ne baze te periudhes se rezervimit
+Mund te rezervoj veturen per periudhen
+Mund te kryej pagesen online
+Mund te pranoj kushtet e perdorimit
+
+Implementimi:
+Sql Server per ruajtjen e te dhenave
+Php for backend operations
+Bootstrap for fronted
+Electron to create a desktop app for business
+
