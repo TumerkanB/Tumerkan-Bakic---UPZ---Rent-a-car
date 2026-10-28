@@ -109,3 +109,15 @@ CREATE TABLE reservation (
     FOREIGN KEY (clientID) REFERENCES clients(clientID),
     FOREIGN KEY (carID) REFERENCES cars(carID)
 );
+
+CREATE TABLE country (
+    country_ID INT PRIMARY KEY,
+    countryName VARCHAR(100)
+);
+
+CREATE TABLE city (
+    cityID INT PRIMARY KEY,
+    cityName VARCHAR(100),
+    countryID INT,
+    FOREIGN KEY (countryID) REFERENCES country(country_ID)
+);
