@@ -1,123 +1,123 @@
 
-CREATE TABLE manufacturer (
-    manufacturerID INT PRIMARY KEY,
-    manufacturerName VARCHAR(100)
+CREATE TABLE Country (
+    countryID INT AUTO_INCREMENT PRIMARY KEY,
+    countryName VARCHAR(100) NOT NULL
 );
 
-CREATE TABLE Permisions (
-    permisionID INT PRIMARY KEY,
-    permissionName VARCHAR(100)
-);
-
-CREATE TABLE Roles (
-    roleID INT PRIMARY KEY,
-    roleName VARCHAR(100)
-);
-
-
-CREATE TABLE role_permissions (
-    roleID INT,
-    permisionID INT,
-    PRIMARY KEY (roleID, permisionID),
-    FOREIGN KEY (roleID) REFERENCES Roles(roleID),
-    FOREIGN KEY (permisionID) REFERENCES Permisions(permisionID)
-);
-
-
-CREATE TABLE brands (
-    brandID INT PRIMARY KEY,
-    brandName VARCHAR(100),
-    manufacturerID INT,
-    FOREIGN KEY (manufacturerID) REFERENCES manufacturer(manufacturerID)
-);
-
-CREATE TABLE Users (
-    userID INT PRIMARY KEY,
-    userName VARCHAR(100),
-    email VARCHAR(100),
-    password VARCHAR(255),
-    isActive BOOLEAN,
-    roleID INT,
-    FOREIGN KEY (roleID) REFERENCES Roles(roleID)
-);
-
-
-CREATE TABLE models (
-    modelID INT PRIMARY KEY,
-    modelName VARCHAR(100),
-    brandID INT,
-    FOREIGN KEY (brandID) REFERENCES brands(brandID)
-);
-
-CREATE TABLE clients (
-    clientID INT PRIMARY KEY,
-    ssn VARCHAR(50),
-    name VARCHAR(100),
-    middleName VARCHAR(100),
-    surname VARCHAR(100),
-    dateOfBirth DATE,
-    gender VARCHAR(20),
-    userID INT,
-    FOREIGN KEY (userID) REFERENCES Users(userID)
-);
-
-
-CREATE TABLE cars (
-    carID INT PRIMARY KEY,
-    vin VARCHAR(50),
-    licencePlate VARCHAR(50),
-    color VARCHAR(50),
-    power INT,
-    current_Mileage INT,
-    price DECIMAL(10, 2),
-    fuel VARCHAR(20) CHECK (fuel IN ('Gas', 'Diesel', 'Electric', 'Hybrid')),
-    modelID INT,
-    FOREIGN KEY (modelID) REFERENCES models(modelID)
-);
-
-CREATE TABLE verification (
-    verificationID INT PRIMARY KEY,
-    documentID VARCHAR(100),
-    Country VARCHAR(100),
-    Attribute VARCHAR(100),
-    clientID INT,
-    FOREIGN KEY (clientID) REFERENCES clients(clientID)
-);
-
-
-CREATE TABLE priceHistory (
-    priceID INT PRIMARY KEY,
-    dailyRate DECIMAL(10, 2),
-    effectiveFrom DATE,
-    effectiveTo DATE,
-    carID INT,
-    FOREIGN KEY (carID) REFERENCES cars(carID)
-);
-
-CREATE TABLE reservation (
-    reservationID INT PRIMARY KEY,
-    startDate DATETIME,
-    endDate DATETIME,
-    startFuel DECIMAL(5, 2),
-    endFuel DECIMAL(5, 2),
-    startMileage INT,
-    endMileage INT,
-    totalPrice DECIMAL(10, 2),
-    status VARCHAR(50),
-    clientID INT,
-    carID INT,
-    FOREIGN KEY (clientID) REFERENCES clients(clientID),
-    FOREIGN KEY (carID) REFERENCES cars(carID)
-);
-
-CREATE TABLE country (
-    country_ID INT PRIMARY KEY,
-    countryName VARCHAR(100)
-);
-
-CREATE TABLE city (
-    cityID INT PRIMARY KEY,
-    cityName VARCHAR(100),
+CREATE TABLE City (
+    cityID INT AUTO_INCREMENT PRIMARY KEY,
+    cityName VARCHAR(100) NOT NULL,
     countryID INT,
-    FOREIGN KEY (countryID) REFERENCES country(country_ID)
+    FOREIGN KEY (countryID) REFERENCES Country(countryID)
+);
+
+CREATE TABLE Address (
+    addressID INT AUTO_INCREMENT PRIMARY KEY,
+    street VARCHAR(255) NOT NULL,
+    number VARCHAR(20) NOT NULL,
+    apt VARCHAR(20),
+    zip VARCHAR(20) NOT NULL,
+    cityID INT,
+    FOREIGN KEY (cityID) REFERENCES City(cityID)
+);
+
+
+CREATE TABLE Role (
+    roleID INT AUTO_INCREMENT PRIMARY KEY,
+    roleName VARCHAR(50) NOT NULL
+);
+DD
+CREATE TABLE Permission (
+    permissionID INT AUTO_INCREMENT PRIMARY KEY,
+    permissionName VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE RolePermission (
+    roleID INT,
+    permissionID INT,
+    PRIMARY KEY (roleID, permissionID),
+    FOREIGN KEY (roleID) REFERENCES Role(roleID),
+    FOREIGN KEY (permissionID) REFERENCES Permission(permissionID)
+);
+
+CREATE TABLE User (
+    userID INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    roleID INT,
+    FOREIGN KEY (roleID) REFERENCES Role(roleID)
+);
+
+
+CREATE TABLE Client (
+    clientID INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    surname VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    phone VARCHAR(50),
+    addressID INT,
+    FOREIGN KEY (addressID) REFERENCES Address(addressID)
+);
+
+CREATE TABLE Verification (
+    verificationID INT AUTO_INCREMENT PRIMARY KEY,
+    clientID INT,
+    documentID VARCHAR(100) NOT NULL,
+    documentCountryID INT,
+    attribute VARCHAR(100),
+    isVerified BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (clientID) REFERENCES Client(clientID),
+    FOREIGN KEY (documentCountryID) REFERENCES Country(countryID)
+);
+
+
+CREATE TABLE Manufacturer (
+    manufacturerID INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE Brand (
+    brandID INT AUTO_INCREMENT PRIMARY KEY,
+    brandName VARCHAR(100) NOT NULL,
+    manufacturerID INT,
+    FOREIGN KEY (manufacturerID) REFERENCES Manufacturer(manufacturerID)
+);
+
+CREATE TABLE Model (
+    modelID INT AUTO_INCREMENT PRIMARY KEY,
+    modelName VARCHAR(100) NOT NULL,
+    brandID INT,
+    FOREIGN KEY (brandID) REFERENCES Brand(brandID)
+);
+
+CREATE TABLE Car (
+    carID INT AUTO_INCREMENT PRIMARY KEY,
+    modelID INT,
+    plate VARCHAR(20) UNIQUE NOT NULL,
+    color VARCHAR(50),
+    fuelType ENUM('Gas', 'Diesel', 'Electric', 'Hybrid') NOT NULL,
+    FOREIGN KEY (modelID) REFERENCES Model(modelID)
+);
+
+CREATE TABLE PriceHistory (
+    priceID INT AUTO_INCREMENT PRIMARY KEY,
+    carID INT,
+    dailyRate DECIMAL(10,2) NOT NULL,
+    effectiveFrom DATE NOT NULL,
+    effectiveTo DATE,
+    FOREIGN KEY (carID) REFERENCES Car(carID)
+);
+
+
+CREATE TABLE Reservation (
+    reservationID INT AUTO_INCREMENT PRIMARY KEY,
+    clientID INT,
+    carID INT,
+    startDate DATETIME NOT NULL,
+    endDate DATETIME NOT NULL,
+    status VARCHAR(50) DEFAULT 'Pending',
+    totalPrice DECIMAL(10,2),
+    FOREIGN KEY (clientID) REFERENCES Client(clientID),
+    FOREIGN KEY (carID) REFERENCES Car(carID)
 );
