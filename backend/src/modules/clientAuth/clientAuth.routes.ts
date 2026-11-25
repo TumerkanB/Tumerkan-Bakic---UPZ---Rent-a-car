@@ -2,14 +2,25 @@ import { Router } from 'express';
 import { authenticateClient } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import {
+  checkAvailabilityQuerySchema,
   clientLoginSchema,
   clientRegisterSchema,
   type ClientLoginInput,
   type ClientRegisterInput,
 } from './clientAuth.schema.js';
-import { loginClient, registerClient } from './clientAuth.service.js';
+import { checkClientAvailability, loginClient, registerClient } from './clientAuth.service.js';
 
 export const clientAuthRouter = Router();
+
+clientAuthRouter.get(
+  '/check-availability',
+  validate({ query: checkAvailabilityQuerySchema }),
+  async (req, res) => {
+    const query = req.query as { email?: string; phone?: string; username?: string };
+    const result = await checkClientAvailability(query);
+    res.json(result);
+  },
+);
 
 clientAuthRouter.post('/login', validate({ body: clientLoginSchema }), async (req, res) => {
   const { username, password } = req.body as ClientLoginInput;

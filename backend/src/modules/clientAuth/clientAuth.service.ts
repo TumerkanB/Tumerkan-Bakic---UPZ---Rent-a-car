@@ -2,8 +2,8 @@ import bcrypt from 'bcryptjs';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { env } from '../../config/env.js';
-import { pool } from '../../db/pool.js';
-import { ForbiddenError, UnauthorizedError } from '../../errors/AppError.js';
+import { pool, withTransaction } from '../../db/pool.js';
+import { ConflictError, ForbiddenError, UnauthorizedError } from '../../errors/AppError.js';
 import type { AuthClient } from '../../middleware/auth.js';
 import type { ClientRegisterInput } from './clientAuth.schema.js';
 
@@ -81,28 +81,95 @@ export async function loginClient(
   return { token: signClientToken(client), client };
 }
 
+export async function checkClientAvailability(params: {
+  email?: string;
+  phone?: string;
+  username?: string;
+}): Promise<{ emailTaken?: boolean; phoneTaken?: boolean; usernameTaken?: boolean }> {
+  const result: { emailTaken?: boolean; phoneTaken?: boolean; usernameTaken?: boolean } = {};
+
+  if (params.email) {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT 1 FROM \`client\` WHERE email = ? LIMIT 1`,
+      [params.email],
+    );
+    result.emailTaken = rows.length > 0;
+  }
+
+  if (params.phone) {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT 1 FROM \`client\` WHERE phone = ? LIMIT 1`,
+      [params.phone],
+    );
+    result.phoneTaken = rows.length > 0;
+  }
+
+  if (params.username) {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT 1 FROM \`client\` WHERE username = ? LIMIT 1`,
+      [params.username],
+    );
+    result.usernameTaken = rows.length > 0;
+  }
+
+  return result;
+}
+
 export async function registerClient(
   input: ClientRegisterInput,
 ): Promise<{ token: string; client: AuthClient }> {
+  const availability = await checkClientAvailability({
+    email: input.email,
+    phone: input.phone,
+    username: input.username,
+  });
+
+  if (availability.emailTaken) {
+    throw new ConflictError('Email is already registered');
+  }
+  if (availability.phoneTaken) {
+    throw new ConflictError('Phone number is already registered');
+  }
+  if (availability.usernameTaken) {
+    throw new ConflictError('Username is already taken');
+  }
+
   const passwordHash = await bcrypt.hash(input.password, 12);
 
-  const [result] = await pool.query<ResultSetHeader>(
-    `INSERT INTO \`client\` (name, surname, email, phone, dateOfBirth, username, password)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [
-      input.name,
-      input.surname,
-      input.email,
-      input.phone ?? null,
-      input.dateOfBirth ?? null,
-      input.username,
-      passwordHash,
-    ],
-  );
+  const clientID = await withTransaction(null, async (conn) => {
+    const [addrResult] = await conn.query<ResultSetHeader>(
+      `INSERT INTO \`address\` (street, number, apt, zip, cityID)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        input.address.street,
+        input.address.number,
+        input.address.apt || null,
+        input.address.zip,
+        input.address.cityID,
+      ],
+    );
+
+    const [clientResult] = await conn.query<ResultSetHeader>(
+      `INSERT INTO \`client\` (name, surname, email, phone, addressID, dateOfBirth, username, password, lastLoginAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        input.name,
+        input.surname,
+        input.email,
+        input.phone,
+        addrResult.insertId,
+        input.dateOfBirth,
+        input.username,
+        passwordHash,
+      ],
+    );
+
+    return clientResult.insertId;
+  });
 
   const client: AuthClient = {
     tokenType: 'client',
-    clientID: result.insertId,
+    clientID,
     username: input.username,
     email: input.email,
     name: input.name,

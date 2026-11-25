@@ -2,13 +2,18 @@ import { Router } from 'express';
 import { validate } from '../../middleware/validate.js';
 import { listBranches, listCategories } from '../fleet/fleet.service.js';
 import { publicCarsSearchSchema, type PublicCarsSearchQuery } from './publicCatalog.schema.js';
-import { getPublicFilterOptions, getPublicLocations, searchPublicCars } from './publicCatalog.service.js';
+import { getAllGeo, getPublicFilterOptions, getPublicLocations, searchPublicCars } from './publicCatalog.service.js';
 
 export const publicCatalogRouter = Router();
 
 publicCatalogRouter.get('/locations', async (_req, res) => {
   const locations = await getPublicLocations();
   res.json(locations);
+});
+
+publicCatalogRouter.get('/geo', async (_req, res) => {
+  const geo = await getAllGeo();
+  res.json(geo);
 });
 
 publicCatalogRouter.get('/filter-options', async (_req, res) => {

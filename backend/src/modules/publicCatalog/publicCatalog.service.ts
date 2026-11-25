@@ -124,6 +124,22 @@ export async function getPublicLocations() {
   };
 }
 
+export async function getAllGeo() {
+  const [rawCountries] = await pool.query<RowDataPacket[]>(
+    `SELECT * FROM country ORDER BY countryName ASC`,
+  );
+  const countries = rawCountries.map((row) => ({
+    countryID: Number(row.countryID),
+    countryName: String(row.countryName),
+    phoneCode: String(row.phoneCode ?? row.dialCode ?? row.phone_code ?? ''),
+    flagIcon: (row.flagIcon ?? row.flagUrl ?? row.flag ?? row.flag_icon ?? null) as string | null,
+  }));
+  const [cities] = await pool.query<CityRow[]>(
+    `SELECT cityID, cityName, countryID FROM city ORDER BY cityName ASC`,
+  );
+  return { countries, cities };
+}
+
 export async function getPublicFilterOptions() {
   const [categories] = await pool.query<RowDataPacket[]>(
     `SELECT categoryID, categoryName, depositAmount
