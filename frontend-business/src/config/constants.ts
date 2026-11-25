@@ -1,7 +1,10 @@
 export const ROUTES = Object.freeze({
   HOME: '/',
   LOGIN: '/login',
-  FLEET: '/fleet',
+  FLEET: '/cars',
+  CARS_CATALOG: '/cars/catalog',
+  CARS_MANAGE: '/cars',
+  CARS_REGISTER: '/cars/new',
 });
 
 export const STORAGE_KEYS = Object.freeze({
