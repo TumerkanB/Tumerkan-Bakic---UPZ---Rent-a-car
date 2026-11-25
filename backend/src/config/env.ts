@@ -4,7 +4,7 @@ import { z } from 'zod';
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
-  CORS_ORIGIN: z.string().min(1).default('http://localhost:5173'),
+  CORS_ORIGIN: z.string().min(1).default('http://localhost:5173,http://localhost:5174'),
 
   DB_HOST: z.string().min(1, 'DB_HOST is required'),
   DB_PORT: z.coerce.number().int().min(1).max(65535).default(3306),
@@ -15,6 +15,9 @@ const envSchema = z.object({
 
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
   JWT_EXPIRES_IN: z.string().min(1).default('8h'),
+
+  UPLOAD_DIR: z.string().min(1).default('./uploads'),
+  PUBLIC_BASE_URL: z.string().min(1).default('http://localhost:4000'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -47,4 +50,6 @@ export const env = Object.freeze({
     secret: data.JWT_SECRET,
     expiresIn: data.JWT_EXPIRES_IN,
   }),
+  uploadDir: data.UPLOAD_DIR,
+  publicBaseUrl: data.PUBLIC_BASE_URL.replace(/\/+$/, ''),
 });

@@ -11,7 +11,9 @@ export interface AuthUser {
   roleID: number;
   roleName: string;
   branchID: number | null;
+  branchName: string | null;
   permissions: string[];
+  mustChangePassword?: boolean;
 }
 
 export interface AuthClient {
@@ -92,4 +94,8 @@ export function requireRole(...roles: string[]) {
     }
     next();
   };
+}
+
+export function requireAdmin() {
+  return requireRole('Admin');
 }

@@ -1,10 +1,9 @@
 import bcrypt from 'bcryptjs';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2/promise';
-import { APP_CONSTANTS } from '../../config/constants.js';
 import { env } from '../../config/env.js';
 import { pool } from '../../db/pool.js';
-import { ForbiddenError, UnauthorizedError } from '../../errors/AppError.js';
+import { ForbiddenError, NotFoundError, UnauthorizedError } from '../../errors/AppError.js';
 import type { AuthUser } from '../../middleware/auth.js';
 
 interface UserRow extends RowDataPacket {
@@ -14,30 +13,24 @@ interface UserRow extends RowDataPacket {
   email: string;
   roleID: number;
   roleName: string;
-  isActive: number;
   branchID: number | null;
-  failedLoginCount: number;
+  branchName: string | null;
   lockedUntil: Date | null;
+}
+
+interface LoginStateRow extends RowDataPacket {
+  state: 'UNKNOWN' | 'INACTIVE' | 'LOCKED' | 'OK';
 }
 
 interface PermissionRow extends RowDataPacket {
   permissionName: string;
 }
 
-interface SettingRow extends RowDataPacket {
-  settingKey: string;
-  settingValue: number;
-}
-
-async function getLoginSecuritySettings(): Promise<{ maxFailedLogins: number; lockoutMinutes: number }> {
-  const [rows] = await pool.query<SettingRow[]>(
-    `SELECT settingKey, settingValue FROM setting WHERE settingKey IN ('max_failed_logins', 'lockout_minutes')`,
-  );
-  const map = new Map(rows.map((r) => [r.settingKey, Number(r.settingValue)]));
-  return {
-    maxFailedLogins: map.get('max_failed_logins') ?? APP_CONSTANTS.DEFAULT_MAX_FAILED_LOGINS,
-    lockoutMinutes: map.get('lockout_minutes') ?? APP_CONSTANTS.DEFAULT_LOCKOUT_MINUTES,
+function signStaffToken(user: AuthUser): string {
+  const signOptions: SignOptions = {
+    expiresIn: env.jwt.expiresIn as SignOptions['expiresIn'],
   };
+  return jwt.sign(user, env.jwt.secret, signOptions);
 }
 
 async function getRolePermissions(roleID: number): Promise<string[]> {
@@ -49,11 +42,30 @@ async function getRolePermissions(roleID: number): Promise<string[]> {
 }
 
 export async function loginUser(username: string, password: string): Promise<{ token: string; user: AuthUser }> {
+  const [stateRows] = await pool.query<LoginStateRow[]>(`SELECT fn_login_state(?) AS state`, [username]);
+  const state = stateRows[0]?.state ?? 'UNKNOWN';
+
+  if (state === 'UNKNOWN') {
+    throw new UnauthorizedError('Invalid username or password');
+  }
+  if (state === 'INACTIVE') {
+    throw new ForbiddenError('Account is inactive');
+  }
+  if (state === 'LOCKED') {
+    const [lockRows] = await pool.query<RowDataPacket[]>(
+      `SELECT lockedUntil FROM \`user\` WHERE username = ? LIMIT 1`,
+      [username],
+    );
+    const lockedUntil = lockRows[0]?.lockedUntil ? new Date(lockRows[0].lockedUntil as string).toLocaleString() : 'shortly';
+    throw new ForbiddenError(`Account is locked until ${lockedUntil}`);
+  }
+
   const [rows] = await pool.query<UserRow[]>(
     `SELECT u.userID, u.username, u.password, u.email, u.roleID, r.roleName,
-            u.isActive, u.branchID, u.failedLoginCount, u.lockedUntil
+            u.branchID, br.branchName
      FROM \`user\` u
      JOIN \`role\` r ON r.roleID = u.roleID
+     LEFT JOIN branch br ON br.branchID = u.branchID
      WHERE u.username = ?
      LIMIT 1`,
     [username],
@@ -64,54 +76,74 @@ export async function loginUser(username: string, password: string): Promise<{ t
     throw new UnauthorizedError('Invalid username or password');
   }
 
-  if (userRow.isActive !== 1) {
-    throw new ForbiddenError('Account is inactive');
-  }
-
-  if (userRow.lockedUntil && new Date(userRow.lockedUntil) > new Date()) {
-    throw new ForbiddenError('Account is temporarily locked due to failed login attempts');
-  }
-
   const passwordValid = await bcrypt.compare(password, userRow.password);
   if (!passwordValid) {
-    const { maxFailedLogins, lockoutMinutes } = await getLoginSecuritySettings();
-    const nextCount = userRow.failedLoginCount + 1;
-    const shouldLock = nextCount >= maxFailedLogins;
-
-    await pool.query(
-      `UPDATE \`user\`
-       SET failedLoginCount = ?,
-           lastFailedLoginAt = NOW(),
-           lockedUntil = IF(?, DATE_ADD(NOW(), INTERVAL ? MINUTE), lockedUntil)
-       WHERE userID = ?`,
-      [nextCount, shouldLock ? 1 : 0, lockoutMinutes, userRow.userID],
-    );
-
+    await pool.query(`CALL sp_login_failed(?)`, [username]);
     throw new UnauthorizedError('Invalid username or password');
   }
 
-  await pool.query(
-    `UPDATE \`user\`
-     SET failedLoginCount = 0, lockedUntil = NULL, lastLoginAt = NOW()
-     WHERE userID = ?`,
-    [userRow.userID],
-  );
+  await pool.query(`CALL sp_login_succeeded(?, @out_user_id)`, [username]);
 
   const permissions = await getRolePermissions(userRow.roleID);
+  const mustChangePassword = userRow.username === 'admin' && password === 'admin123';
+
   const authUser: AuthUser = {
+    tokenType: 'staff',
     userID: userRow.userID,
     username: userRow.username,
     email: userRow.email,
     roleID: userRow.roleID,
     roleName: userRow.roleName,
     branchID: userRow.branchID,
+    branchName: userRow.branchName,
     permissions,
+    mustChangePassword,
   };
 
-  const signOptions: SignOptions = {
-    expiresIn: env.jwt.expiresIn as SignOptions['expiresIn'],
-  };
-  const token = jwt.sign(authUser, env.jwt.secret, signOptions);
+  return { token: signStaffToken(authUser), user: authUser };
+}
 
-  return { token, user: authUser };
+export async function changeStaffPassword(
+  userID: number,
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ token: string; user: AuthUser }> {
+  const [rows] = await pool.query<UserRow[]>(
+    `SELECT u.userID, u.username, u.password, u.email, u.roleID, r.roleName,
+            u.branchID, br.branchName
+     FROM \`user\` u
+     JOIN \`role\` r ON r.roleID = u.roleID
+     LEFT JOIN branch br ON br.branchID = u.branchID
+     WHERE u.userID = ?
+     LIMIT 1`,
+    [userID],
+  );
+  const userRow = rows[0];
+  if (!userRow) {
+    throw new NotFoundError('User not found');
+  }
+
+  const valid = await bcrypt.compare(currentPassword, userRow.password);
+  if (!valid) {
+    throw new UnauthorizedError('Current password is incorrect');
+  }
+
+  const hash = await bcrypt.hash(newPassword, 12);
+  await pool.query(`UPDATE \`user\` SET password = ? WHERE userID = ?`, [hash, userID]);
+
+  const permissions = await getRolePermissions(userRow.roleID);
+  const authUser: AuthUser = {
+    tokenType: 'staff',
+    userID: userRow.userID,
+    username: userRow.username,
+    email: userRow.email,
+    roleID: userRow.roleID,
+    roleName: userRow.roleName,
+    branchID: userRow.branchID,
+    branchName: userRow.branchName,
+    permissions,
+    mustChangePassword: false,
+  };
+
+  return { token: signStaffToken(authUser), user: authUser };
 }

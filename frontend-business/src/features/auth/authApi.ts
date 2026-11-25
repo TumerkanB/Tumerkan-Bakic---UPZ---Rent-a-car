@@ -7,7 +7,9 @@ export interface UserProfile {
   roleID: number;
   roleName: string;
   branchID: number | null;
+  branchName: string | null;
   permissions: string[];
+  mustChangePassword?: boolean;
 }
 
 export interface LoginResponse {
@@ -19,6 +21,16 @@ export function loginRequest(username: string, password: string): Promise<LoginR
   return apiRequest<LoginResponse>('/auth/login', {
     method: 'POST',
     body: { username, password },
+  });
+}
+
+export function changeStaffPasswordRequest(
+  currentPassword: string,
+  newPassword: string,
+): Promise<LoginResponse> {
+  return apiRequest<LoginResponse>('/auth/change-password', {
+    method: 'POST',
+    body: { currentPassword, newPassword },
   });
 }
 

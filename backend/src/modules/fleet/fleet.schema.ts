@@ -12,6 +12,12 @@ export const listCarsQuerySchema = z.object({
   status: z.enum(['Available', 'Maintenance', 'Inactive']).optional(),
   branchID: z.coerce.number().int().positive().optional(),
   categoryID: z.coerce.number().int().positive().optional(),
+  brandID: z.coerce.number().int().positive().optional(),
+  fuelType: z.enum(['Gas', 'Diesel', 'Electric', 'Hybrid']).optional(),
+  transmission: z.enum(['Manual', 'Automatic']).optional(),
+  expiringSoon: z.enum(['true', 'false']).optional(),
+  sort: z.string().trim().max(50).optional(),
+  order: z.enum(['asc', 'desc']).default('desc'),
   search: z.string().trim().max(100).optional(),
 });
 
@@ -42,6 +48,25 @@ export const brandBodySchema = z.object({
 export const modelBodySchema = z.object({
   modelName: z.string().trim().min(1, 'Model name is required').max(100),
   brandID: z.coerce.number().int().positive(),
+});
+
+export const bulkModelsBodySchema = z.object({
+  items: z
+    .array(
+      z.object({
+        modelName: z.string().trim().min(1).max(100),
+        brandName: z.string().trim().min(1).max(100),
+      }),
+    )
+    .min(1, 'At least one model row is required')
+    .max(500),
+});
+
+export const categoryBodySchema = z.object({
+  categoryName: z.string().trim().min(1, 'Category name is required').max(50),
+  description: z.string().trim().max(255).nullable().optional(),
+  depositAmount: z.coerce.number().min(0, 'Deposit cannot be negative').default(0),
+  isActive: z.boolean().default(true),
 });
 
 export const createCarBodySchema = z.object({
@@ -83,6 +108,36 @@ export const addCarImageSchema = z.object({
   fileReference: z.string().trim().min(1, 'Image URL/path is required').max(500),
   caption: z.string().trim().max(255).nullable().optional(),
   makePrimary: z.boolean().default(false),
+});
+
+export const reorderImagesSchema = z.object({
+  imageIDs: z.array(z.coerce.number().int().positive()).min(1),
+});
+
+export const setCarPriceSchema = z.object({
+  dailyRate: z.coerce.number().positive('Daily rate must be greater than 0'),
+  effectiveFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+});
+
+export const maintenanceBodySchema = z.object({
+  serviceType: z.enum(['Service', 'Repair', 'Tyres', 'Inspection', 'Other']),
+  serviceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+  mileage: z.coerce.number().int().min(0),
+  cost: z.coerce.number().min(0).default(0),
+  description: z.string().trim().max(2000).nullable().optional(),
+  performedBy: z.string().trim().max(100).nullable().optional(),
+  nextDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  nextDueMileage: z.coerce.number().int().min(0).nullable().optional(),
+});
+
+export const reportDamageSchema = z.object({
+  reservationID: z.coerce.number().int().positive().nullable().optional(),
+  description: z.string().trim().min(1, 'Description is required').max(2000),
+  repairCost: z.coerce.number().min(0).nullable().optional(),
+});
+
+export const markRepairedSchema = z.object({
+  repairCost: z.coerce.number().min(0),
 });
 
 export type ListCarsQuery = z.infer<typeof listCarsQuerySchema>;

@@ -1,11 +1,18 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { STORAGE_KEYS } from '../../config/constants';
-import { fetchCurrentUser, loginRequest, type UserProfile } from './authApi';
+import {
+  changeStaffPasswordRequest,
+  fetchCurrentUser,
+  loginRequest,
+  type UserProfile,
+} from './authApi';
 
 interface AuthContextValue {
   user: UserProfile | null;
   isLoading: boolean;
+  isAdmin: boolean;
   login: (username: string, password: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => void;
   hasPermission: (permission: string) => boolean;
 }
@@ -38,6 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(res.user);
   }, []);
 
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    const res = await changeStaffPasswordRequest(currentPassword, newPassword);
+    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, res.token);
+    setUser(res.user);
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
     setUser(null);
@@ -48,9 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user],
   );
 
+  const isAdmin = user?.roleName === 'Admin';
+
   const value = useMemo(
-    () => ({ user, isLoading, login, logout, hasPermission }),
-    [user, isLoading, login, logout, hasPermission],
+    () => ({ user, isLoading, isAdmin, login, changePassword, logout, hasPermission }),
+    [user, isLoading, isAdmin, login, changePassword, logout, hasPermission],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
