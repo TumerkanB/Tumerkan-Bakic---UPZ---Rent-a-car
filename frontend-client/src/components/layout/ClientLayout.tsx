@@ -1,15 +1,17 @@
 import { Car, LogOut, User } from 'lucide-react';
-import { Link, NavLink, Outlet } from 'react-router';
+import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { ROUTES } from '../../config/constants';
 import { env } from '../../config/env';
 import { useClientAuth } from '../../features/auth/ClientAuthContext';
 
 export function ClientLayout() {
   const { client, logout } = useClientAuth();
+  const { pathname } = useLocation();
+  const isResultsPage = pathname === ROUTES.RESULTS;
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link to={ROUTES.HOME} className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
@@ -71,7 +73,13 @@ export function ClientLayout() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+      <main
+        className={
+          isResultsPage
+            ? 'ml-0 w-full flex-1 pl-0'
+            : 'mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6'
+        }
+      >
         <Outlet />
       </main>
     </div>

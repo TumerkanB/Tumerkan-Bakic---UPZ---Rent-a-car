@@ -5,7 +5,8 @@ import { AccountPage } from './features/account/AccountPage';
 import { ClientAuthProvider } from './features/auth/ClientAuthContext';
 import { ClientLoginPage } from './features/auth/ClientLoginPage';
 import { ClientRegisterPage } from './features/auth/ClientRegisterPage';
-import { CatalogPage } from './features/catalog/CatalogPage';
+import { ResultsPage } from './features/catalog/ResultsPage';
+import { SearchPage } from './features/catalog/SearchPage';
 
 export function App() {
   return (
@@ -13,7 +14,8 @@ export function App() {
       <BrowserRouter>
         <Routes>
           <Route element={<ClientLayout />}>
-            <Route path={ROUTES.HOME} element={<CatalogPage />} />
+            <Route path={ROUTES.HOME} element={<SearchPage />} />
+            <Route path={ROUTES.RESULTS} element={<ResultsPage />} />
             <Route path={ROUTES.LOGIN} element={<ClientLoginPage />} />
             <Route path={ROUTES.REGISTER} element={<ClientRegisterPage />} />
             <Route path={ROUTES.ACCOUNT} element={<AccountPage />} />

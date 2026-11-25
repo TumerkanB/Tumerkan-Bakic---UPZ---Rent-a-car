@@ -16,7 +16,7 @@ export function createApp() {
   app.use(helmet());
   app.use(
     cors({
-      origin: env.corsOrigins,
+      origin: [...env.corsOrigins],
       credentials: true,
     }),
   );
