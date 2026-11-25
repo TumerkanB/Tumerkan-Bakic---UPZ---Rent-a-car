@@ -13,6 +13,7 @@ interface ClientAuthContextValue {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (payload: ClientRegisterPayload) => Promise<void>;
+  setSession: (token: string, client: ClientProfile) => void;
   logout: () => void;
 }
 
@@ -38,17 +39,20 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
+  const setSession = useCallback((token: string, nextClient: ClientProfile) => {
+    localStorage.setItem(STORAGE_KEYS.CLIENT_TOKEN, token);
+    setClient(nextClient);
+  }, []);
+
   const login = useCallback(async (username: string, password: string) => {
     const res = await clientLoginRequest(username, password);
-    localStorage.setItem(STORAGE_KEYS.CLIENT_TOKEN, res.token);
-    setClient(res.client);
-  }, []);
+    setSession(res.token, res.client);
+  }, [setSession]);
 
   const register = useCallback(async (payload: ClientRegisterPayload) => {
     const res = await clientRegisterRequest(payload);
-    localStorage.setItem(STORAGE_KEYS.CLIENT_TOKEN, res.token);
-    setClient(res.client);
-  }, []);
+    setSession(res.token, res.client);
+  }, [setSession]);
 
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEYS.CLIENT_TOKEN);
@@ -56,8 +60,8 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ client, isLoading, login, register, logout }),
-    [client, isLoading, login, register, logout],
+    () => ({ client, isLoading, login, register, setSession, logout }),
+    [client, isLoading, login, register, setSession, logout],
   );
 
   return <ClientAuthContext.Provider value={value}>{children}</ClientAuthContext.Provider>;

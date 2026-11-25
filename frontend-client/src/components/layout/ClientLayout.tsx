@@ -7,7 +7,7 @@ import { useClientAuth } from '../../features/auth/ClientAuthContext';
 export function ClientLayout() {
   const { client, logout } = useClientAuth();
   const { pathname } = useLocation();
-  const isResultsPage = pathname === ROUTES.RESULTS;
+  const isFullBleed = pathname === ROUTES.RESULTS || pathname === ROUTES.ACCOUNT;
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
@@ -75,7 +75,7 @@ export function ClientLayout() {
 
       <main
         className={
-          isResultsPage
+          isFullBleed
             ? 'ml-0 w-full flex-1 pl-0'
             : 'mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6'
         }
